@@ -17,7 +17,7 @@ enum EventSourceState {
 public class EventSource: NSObject, NSURLSessionDataDelegate {
 
     let url: NSURL
-    private let lastEventIDKey = "com.inaka.eventSource.lastEventId"
+    private var lastEventID: String?
     private let receivedString: NSString?
     private var onOpenCallback: (Void -> Void)?
     private var onErrorCallback: (NSError? -> Void)?
@@ -131,19 +131,19 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     public func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError error: NSError?) {
         readyState = EventSourceState.Closed
 
-        if(error == nil || error!.code != -999) {
+        if (error != nil && error!.code != NSURLErrorCancelled) {
             let nanoseconds = Double(self.retryTime) / 1000.0 * Double(NSEC_PER_SEC)
             let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(nanoseconds));
             dispatch_after(delayTime, dispatch_get_main_queue()) {
                 self.connect()
             }
-        }
-
-        dispatch_async(dispatch_get_main_queue()) {
-            if let errorCallback = self.onErrorCallback {
-                errorCallback(error)
-            }else {
-                self.errorBeforeSetErrorCallBack = error
+            
+            dispatch_async(dispatch_get_main_queue()) {
+                if let errorCallback = self.onErrorCallback {
+                    errorCallback(error)
+                }else {
+                    self.errorBeforeSetErrorCallBack = error
+                }
             }
         }
     }
@@ -215,25 +215,6 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
                     eventHandler(id: self.lastEventID, event: event, data: data)
                 }
             }
-        }
-    }
-
-    internal var lastEventID: String? {
-        set {
-            if let lastEventID = newValue {
-                let defaults = NSUserDefaults.standardUserDefaults()
-                defaults.setObject(lastEventID, forKey: lastEventIDKey)
-                defaults.synchronize()
-            }
-        }
-
-        get {
-            let defaults = NSUserDefaults.standardUserDefaults()
-
-            if let lastEventID = defaults.stringForKey(lastEventIDKey) {
-                return lastEventID
-            }
-            return nil
         }
     }
 
