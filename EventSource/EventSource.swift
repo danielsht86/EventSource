@@ -131,6 +131,13 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     public func URLSession(session: NSURLSession, task: NSURLSessionTask, didCompleteWithError error: NSError?) {
         readyState = EventSourceState.Closed
 
+		if let response = task.response as? NSHTTPURLResponse {
+			if (response.statusCode == 204) {
+				return
+			}
+		}
+		
+		
         if(error == nil || error!.code != -999) {
             let nanoseconds = Double(self.retryTime) / 1000.0 * Double(NSEC_PER_SEC)
             let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(nanoseconds));

@@ -14,8 +14,18 @@ class EventSourceTests: XCTestCase {
     
     var sut: TestableEventSource?
     var session = NSURLSession()
-
+	
+	class MockTask: NSURLSessionDataTask {
+		typealias Response = (data: NSData?, urlResponse: NSURLResponse?, error: NSError?)
+		var mockResponse: Response
+		
+		init(response: Response) {
+			self.mockResponse = response
+		}
+	}
+	
     class TestableEventSource: EventSource {
+		static var urlString = "http://127.0.0.1"
 
         func callDidReceiveResponse() {
             let delegate = self as NSURLSessionDataDelegate
@@ -33,14 +43,23 @@ class EventSourceTests: XCTestCase {
         func callDidCompleteWithError(error: String) {
             let errorToReturn = NSError(domain: "Mock", code: 0, userInfo: ["mock":error])
 
-            let delegate = self as NSURLSessionDataDelegate
+			let delegate = self as NSURLSessionDataDelegate
             delegate.URLSession!(self.urlSession!, task: self.task!, didCompleteWithError: errorToReturn)
         }
+		
+		func callDidCompleteWithNoContent() {
+
+			let urlResponse = NSHTTPURLResponse(URL: NSURL(string: TestableEventSource.urlString)!, statusCode: 204, HTTPVersion: nil, headerFields: nil)
+			
+			let mockTask = MockTask(response: (nil, urlResponse: urlResponse, error: nil))
+			let delegate = self as NSURLSessionDataDelegate
+			delegate.URLSession!(self.urlSession!, task: mockTask, didCompleteWithError: nil)
+		}
     }
 
     override func setUp() {
         super.setUp()
-        sut = TestableEventSource(url: "http://127.0.0.1", headers: ["Authorization" : "basic auth"])
+        sut = TestableEventSource(url: TestableEventSource.urlString, headers: ["Authorization" : "basic auth"])
     }
 
     override class func tearDown() {
@@ -218,6 +237,19 @@ class EventSourceTests: XCTestCase {
         }
     }
 
+	func testNoMoreContent() {
+		sut!.callDidCompleteWithNoContent()
+		let expectation = self.expectationWithDescription("wait 5 seconds")
+
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(6.0 * Double(NSEC_PER_SEC))), dispatch_get_main_queue()) { () -> Void in
+			expectation.fulfill()
+		}
+		
+		self.waitForExpectationsWithTimeout(10) { (error) in
+			XCTAssertEqual(self.sut!.readyState, EventSourceState.Closed)
+		}
+	}
+	
     func testOnOpenGetsCalled(){
         let expectation = self.expectationWithDescription("onOpen should be called")
 
