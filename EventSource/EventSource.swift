@@ -36,9 +36,7 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     
     var event = Dictionary<String, String>()
 
-    
-    public init(url: String, headers: [String : String]) {
-
+    public init(url: String, headers: [String : String], automaticallyConnect: Bool) {
         self.url = NSURL(string: url)!
         self.headers = headers
         self.readyState = EventSourceState.Closed
@@ -47,12 +45,19 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
         self.receivedDataBuffer = NSMutableData()
 
         super.init();
-        self.connect()
+        
+        if (automaticallyConnect == true) {
+            self.connect()
+        }
+    }
+    
+    public convenience init(url: String, headers: [String : String]) {
+        self.init(url: url, headers: headers, automaticallyConnect: false)
     }
 
 //Mark: Connect
     
-    func connect() {
+    public func connect() {
         var additionalHeaders = self.headers
         if let eventID = lastEventID {
             additionalHeaders["Last-Event-Id"] = eventID
