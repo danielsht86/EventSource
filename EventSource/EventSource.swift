@@ -36,11 +36,11 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     
     var event = Dictionary<String, String>()
 
-    public init(url: String, headers: [String : String], automaticallyConnect: Bool) {
+    public init(url: String, headers: [String : String], operationQueue: NSOperationQueue, automaticallyConnect: Bool) {
         self.url = NSURL(string: url)!
         self.headers = headers
         self.readyState = EventSourceState.Closed
-        self.operationQueue = NSOperationQueue()
+        self.operationQueue = operationQueue
         self.receivedString = nil
         self.receivedDataBuffer = NSMutableData()
 
@@ -52,7 +52,7 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     }
     
     public convenience init(url: String, headers: [String : String]) {
-        self.init(url: url, headers: headers, automaticallyConnect: false)
+        self.init(url: url, headers: headers, operationQueue: NSOperationQueue(), automaticallyConnect: false)
     }
 
 //Mark: Connect
