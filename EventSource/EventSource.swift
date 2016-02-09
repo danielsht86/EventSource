@@ -21,6 +21,7 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     private let lastEventIDKey = "com.inaka.eventSource.lastEventId"
     private var transientLastEventID: String?
     private let receivedString: NSString?
+    private var onConnectCallback: (NSDictionary -> Void)?
     private var onOpenCallback: (Void -> Void)?
     private var onErrorCallback: (NSError? -> Void)?
     private var onMessageCallback: ((id: String?, event: String?, data: String?) -> Void)?
@@ -90,6 +91,10 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     }
 
 //Mark: EventListeners
+    
+    public func onConnect(onConnectCallback: NSDictionary -> Void) {
+        self.onConnectCallback = onConnectCallback
+    }
 
     public func onOpen(onOpenCallback: Void -> Void) {
         self.onOpenCallback = onOpenCallback
@@ -128,6 +133,14 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
         completionHandler(NSURLSessionResponseDisposition.Allow)
 
         readyState = EventSourceState.Open
+        if (self.onConnectCallback != nil) {
+            dispatch_async(dispatch_get_main_queue()) {
+                if let httpResponse = response as? NSHTTPURLResponse {
+                    self.onConnectCallback!(httpResponse.allHeaderFields);
+                }
+            }
+        }
+        
         if(self.onOpenCallback != nil) {
             dispatch_async(dispatch_get_main_queue()) {
                 self.onOpenCallback!()
