@@ -269,6 +269,7 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
     private func parseEvent(eventString: String) -> (id: String?, event: String?, data: String?) {
         var event = Dictionary<String, String>()
 
+        var lastKey: String?
         for line in eventString.componentsSeparatedByCharactersInSet(NSCharacterSet.newlineCharacterSet()) as [String] {
             autoreleasepool {
                 var key: NSString?, value: NSString?
@@ -283,8 +284,16 @@ public class EventSource: NSObject, NSURLSessionDataDelegate {
                     } else {
                         event[key as! String] = value! as String
                     }
+                    lastKey = key as? String
                 } else if (key != nil && value == nil) {
-                    event[key as! String] = ""
+                    // If no key specified but there's still a value, it's likely this value
+                    // also belongs to the last key so append it to its value. This happens
+                    // when strings are sometimes encoded with newlines that aren't specified as \n or \r
+                    guard let lastKeyUsed = lastKey else { return }
+                    guard let lastValue = event[lastKeyUsed] else { return }
+                
+                    let newLastValue = lastValue + (key as! String)
+                    event[lastKeyUsed] = newLastValue
                 }
             }
         }
